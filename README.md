@@ -4,7 +4,7 @@ This is a little program meant to help with the task of transcribing small voice
 
 It requires a VOSK-compatible language model for the AutoTranscript feature to work.
 
-Please download a model here; https://alphacephei.com/vosk/models
+Please download a model here: https://alphacephei.com/vosk/models
 
 This software was tested and confirmed to work with the vosk-model-en-us-0.22-lgraph model.
 Any other model should work just as well though.
