@@ -13,7 +13,14 @@ Once the model is extracted, please rename the folder containing the model (**vo
 
 ## Things to take into account
 
-VOSK only supports .wav file formats. Audio Transcription Helper will temporarily convert .mp3s (and only MP3 files) into temporary .wav for processing.
+VOSK only supports .wav file formats.
+
+Audio Transcription Helper will temporarily convert .mp3s (and only MP3 files) into temporary .wav for processing using the NAudio library.
 The VOSK format requires the .wav to be 16KHz, 16-bit, Mono.
 
-When renaming, it will keep the original .mp3 format as to not lose any audio quality through conversion.
+When renaming, it will keep the original .mp3 format as to not lose any audio quality due to conversion.
+
+The following libraries are used by this project:
+
+Vosk
+NAudio
