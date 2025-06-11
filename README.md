@@ -23,4 +23,5 @@ When renaming, it will keep the original .mp3 format as to not lose any audio qu
 The following libraries are used by this project:
 
 Vosk
+
 NAudio
