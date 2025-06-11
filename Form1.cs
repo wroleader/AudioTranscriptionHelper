@@ -100,7 +100,149 @@ namespace AudioTranscriptionHelper
             return tempWavPath;
         }
 
-        private async void btnTranscribe_Click(object sender, EventArgs e)
+        private void btnTranscribe_Click(object sender, EventArgs e)
+        {
+            DoTranscription();
+        }
+
+        private int GetWaveFileSampleRate(string filePath)
+        {
+            using (var reader = new WaveFileReader(filePath))
+            {
+                return reader.WaveFormat.SampleRate;
+            }
+        }
+
+        private string SanitizeFileName(string input)
+        {
+            // Remove invalid characters from file names.
+            string invalidChars = new string(Path.GetInvalidFileNameChars());
+            foreach (char c in invalidChars)
+            {
+                input = input.Replace(c.ToString(), "");
+            }
+            return input.Trim();
+        }
+
+        private void lstFileList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lstFileList.SelectedItems.Count == 0)
+            {
+                btnPlay.Enabled = false;
+                btnTranscribe.Enabled = false;
+                btnRename.Enabled = false;
+                return;
+            }
+
+            btnPlay.Enabled = true;
+            btnTranscribe.Enabled = true;
+            btnRename.Enabled = true;
+
+            // Store full path of selected file.
+            string workingDir = txtWorkfolder.Text;
+            string selectedFile = lstFileList.SelectedItems[0].Text;
+            _currentSelectedFilePath = Path.Combine(workingDir, selectedFile);
+
+        }
+
+        private void btnPlay_Click(object sender, EventArgs e)
+        {
+            DoPlay();
+        }
+        // Cleanup Playback resources when the form is closed or playback is stopped.
+        private void OnPlaybackStopped(object sender, StoppedEventArgs args)
+        {
+            DisposeWave();
+        }
+
+        private void DisposeWave()
+        {
+            // Clean up audio playback resources.
+            _waveOutDevice?.Dispose();
+            _waveOutDevice = null;
+            _audioFileReader?.Dispose();
+            _audioFileReader = null;
+        }
+
+        private void btnRename_Click(object sender, EventArgs e)
+        {
+            DoRename();
+        }
+
+        private void btnAbout_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Audio Transcription Helper\nVersion 1.0\n\nThis application helps you transcribe audio files and rename them based on the transcription.\n\nDeveloped by Haru Nakamura // NAKAMURA SYSTEMS E.I.R.L.", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void btnExit_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+        private void DoPlay()
+        {
+            if (string.IsNullOrEmpty(_currentSelectedFilePath)) return;
+
+            // Stop previous Playback if any
+            DisposeWave();
+
+            try
+            {
+                _waveOutDevice = new WaveOutEvent();
+                _audioFileReader = new AudioFileReader(_currentSelectedFilePath);
+                _waveOutDevice.Init(_audioFileReader);
+                _waveOutDevice.Play();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error playing audio: {ex.Message}", "Playback Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DisposeWave();
+            }
+        }
+        private void DoRename()
+        {
+            // FIX: Release file handle before trying to rename.
+            DisposeWave();
+            if (string.IsNullOrEmpty(_currentTranscription) || string.IsNullOrEmpty(_currentSelectedFilePath))
+            {
+                MessageBox.Show("No transcription available to rename the file.", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                string sanitizedName = SanitizeFileName(txtTranscriptionOutput.Text);
+                if (string.IsNullOrEmpty(sanitizedName))
+                {
+                    MessageBox.Show("Transcription is empty or invalid for renaming.", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string directory = Path.GetDirectoryName(_currentSelectedFilePath);
+                string extension = Path.GetExtension(_currentSelectedFilePath);
+                string newFilePath = Path.Combine(directory, sanitizedName + extension);
+
+                if (File.Exists(newFilePath))
+                {
+                    MessageBox.Show($"A file with the name '{Path.GetFileName(newFilePath)}' already exists, please rename or delete the existing file.", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Rename the file
+                File.Move(_currentSelectedFilePath, newFilePath);
+
+                // Update ListView to reflect the new file name
+                ListViewItem selectedItem = lstFileList.SelectedItems[0];
+                selectedItem.Text = Path.GetFileName(newFilePath);
+
+                // Update stored file path
+                _currentSelectedFilePath = newFilePath;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error renaming file: {ex.Message}", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        private async void DoTranscription()
         {
             //FIX: Ensure file handle is released before starting transcription.
             DisposeWave(); // Ensure any previous playback is stopped before starting transcription
@@ -147,7 +289,7 @@ namespace AudioTranscriptionHelper
 
                 string transcribedText = await Task.Run(() =>
                 {
-                    // This is the heavy work that now runs in the background
+                    // This work runs in a background thread.
                     int sampleRate = GetWaveFileSampleRate(fileToProcess);
 
                     Vosk.Vosk.SetLogLevel(-1); // Turn off verbose logging
@@ -182,6 +324,7 @@ namespace AudioTranscriptionHelper
                 else
                 {
                     txtTranscriptionOutput.Text = _currentTranscription;
+                    txtTranscriptionOutput.Focus();
                 }
             }
             catch (Exception ex)
@@ -205,142 +348,64 @@ namespace AudioTranscriptionHelper
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Non-Critical Error deleting temporary file: {ex.Message}\nConsider deleting the file manually.", "Cleanup Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"Non-critical Error deleting temporary file: {ex.Message}\nConsider deleting the file manually.", "Cleanup Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 }
             }
-
         }
-
-        private int GetWaveFileSampleRate(string filePath)
+        private void txtTranscriptionOutput_KeyPress(object sender, KeyPressEventArgs e)
         {
-            using (var reader = new WaveFileReader(filePath))
+            if (chkKeyboardControls.Checked)
             {
-                return reader.WaveFormat.SampleRate;
-            }
-        }
-
-        private string SanitizeFileName(string input)
-        {
-            // Remove invalid characters from file names.
-            string invalidChars = new string(Path.GetInvalidFileNameChars());
-            foreach (char c in invalidChars)
-            {
-                input = input.Replace(c.ToString(), "");
-            }
-            return input.Trim();
-        }
-
-        private void lstFileList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (lstFileList.SelectedItems.Count == 0)
-            {
-                btnPlay.Enabled = false;
-                btnTranscribe.Enabled = false;
-                btnRename.Enabled = false;
-                return;
-            }
-
-            btnPlay.Enabled = true;
-            btnTranscribe.Enabled = true;
-            btnRename.Enabled = true;
-
-            // Store full path of selected file.
-            string workingDir = txtWorkfolder.Text;
-            string selectedFile = lstFileList.SelectedItems[0].Text;
-            _currentSelectedFilePath = Path.Combine(workingDir, selectedFile);
-
-        }
-
-        private void btnPlay_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(_currentSelectedFilePath)) return;
-
-            // Stop previous Playback if any
-            DisposeWave();
-
-            try
-            {
-                _waveOutDevice = new WaveOutEvent();
-                _audioFileReader = new AudioFileReader(_currentSelectedFilePath);
-                _waveOutDevice.Init(_audioFileReader);
-                _waveOutDevice.Play();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error playing audio: {ex.Message}", "Playback Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                DisposeWave();
-            }
-        }
-        // Cleanup Playback resources when the form is closed or playback is stopped.
-        private void OnPlaybackStopped(object sender, StoppedEventArgs args)
-        {
-            DisposeWave();
-        }
-
-        private void DisposeWave()
-        {
-            // Clean up audio playback resources.
-            _waveOutDevice?.Dispose();
-            _waveOutDevice = null;
-            _audioFileReader?.Dispose();
-            _audioFileReader = null;
-        }
-
-        private void btnRename_Click(object sender, EventArgs e)
-        {
-
-            // FIX: Release file handle before trying to rename.
-            DisposeWave();
-            if (string.IsNullOrEmpty(_currentTranscription) || string.IsNullOrEmpty(_currentSelectedFilePath))
-            {
-                MessageBox.Show("No transcription available to rename the file.", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                string sanitizedName = SanitizeFileName(txtTranscriptionOutput.Text);
-                if (string.IsNullOrEmpty(sanitizedName))
+                if (e.KeyChar == (char)Keys.Enter)
                 {
-                    MessageBox.Show("Transcription is empty or invalid for renaming.", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
+                    e.Handled = true;
+                    DoRename();
+
+                    int currentListIndex = lstFileList.SelectedIndices[0];
+                    int nextIndex = currentListIndex + 1;
+
+                    if (nextIndex < lstFileList.Items.Count)
+                    {
+                        lstFileList.Items[nextIndex].Selected = true;
+                        lstFileList.Items[nextIndex].Focused = true;
+                        lstFileList.Select();
+                    }
                 }
-
-                string directory = Path.GetDirectoryName(_currentSelectedFilePath);
-                string extension = Path.GetExtension(_currentSelectedFilePath);
-                string newFilePath = Path.Combine(directory, sanitizedName + extension);
-
-                if (File.Exists(newFilePath))
-                {
-                    MessageBox.Show($"A file with the name '{Path.GetFileName(newFilePath)}' already exists, please rename or delete the existing file.", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                // Rename the file
-                File.Move(_currentSelectedFilePath, newFilePath);
-
-                // Update ListView to reflect the new file name
-                ListViewItem selectedItem = lstFileList.SelectedItems[0];
-                selectedItem.Text = Path.GetFileName(newFilePath);
-
-                // Update stored file path
-                _currentSelectedFilePath = newFilePath;
             }
-            catch (Exception ex)
+        }
+
+        private void chkKeyboardControls_CheckedChanged(object sender, EventArgs e)
+        {
+            if (chkKeyboardControls.Checked)
             {
-                MessageBox.Show($"Error renaming file: {ex.Message}", "Rename Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Keyboard controls enabled:\n" +
+                    "Press Enter while on the Transcription box to rename the file.\n" +
+                    "The next file will be automatically selected.\n\n" +
+                    "Press Q while on the File List to Play the file.\n" +
+                    "Press W while on the File List to AutoTranscribe.", "Audio Transcription Helper - Keyboard Controls", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
-        private void btnAbout_Click(object sender, EventArgs e)
+        private void lstFileList_KeyDown(object sender, KeyEventArgs e)
         {
-            MessageBox.Show("Audio Transcription Helper\nVersion 1.0\n\nThis application helps you transcribe audio files and rename them based on the transcription.\n\nDeveloped by Haru Nakamura // NAKAMURA SYSTEMS E.I.R.L.", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        private void btnExit_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
+            if (chkKeyboardControls.Checked)
+            {
+                if (e.KeyCode == Keys.Q) // Play Audio
+                {
+                    e.Handled = true;
+                    DoPlay();
+                }
+                else if (e.KeyCode == Keys.W) // AutoTranscribe
+                {
+                    if (txtTranscriptionOutput.Text == "Preparing file..." || txtTranscriptionOutput.Text == "Converting MP3 to WAV...")
+                    {
+                        return; // Prevent transcription if already processing
+                    }
+                    e.Handled = true;
+                    DoTranscription();
+                }
+            }
         }
     }
 }

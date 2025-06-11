@@ -40,7 +40,7 @@
             label3 = new Label();
             btnExit = new Button();
             btnAbout = new Button();
-            label4 = new Label();
+            chkKeyboardControls = new CheckBox();
             SuspendLayout();
             // 
             // txtWorkfolder
@@ -66,6 +66,7 @@
             // 
             lstFileList.BackColor = SystemColors.ScrollBar;
             lstFileList.Location = new Point(13, 57);
+            lstFileList.MultiSelect = false;
             lstFileList.Name = "lstFileList";
             lstFileList.ShowItemToolTips = true;
             lstFileList.Size = new Size(341, 230);
@@ -74,15 +75,16 @@
             lstFileList.UseCompatibleStateImageBehavior = false;
             lstFileList.View = View.List;
             lstFileList.SelectedIndexChanged += lstFileList_SelectedIndexChanged;
+            lstFileList.KeyDown += lstFileList_KeyDown;
             // 
             // label1
             // 
             label1.AutoSize = true;
             label1.Location = new Point(12, 38);
             label1.Name = "label1";
-            label1.Size = new Size(46, 15);
+            label1.Size = new Size(49, 15);
             label1.TabIndex = 3;
-            label1.Text = "File List";
+            label1.Text = "File List:";
             // 
             // btnTranscribe
             // 
@@ -103,6 +105,7 @@
             txtTranscriptionOutput.ScrollBars = ScrollBars.Vertical;
             txtTranscriptionOutput.Size = new Size(481, 86);
             txtTranscriptionOutput.TabIndex = 5;
+            txtTranscriptionOutput.KeyPress += txtTranscriptionOutput_KeyPress;
             // 
             // label2
             // 
@@ -136,7 +139,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(13, 397);
+            label3.Location = new Point(12, 397);
             label3.Name = "label3";
             label3.Size = new Size(439, 15);
             label3.TabIndex = 9;
@@ -162,21 +165,29 @@
             btnAbout.UseVisualStyleBackColor = true;
             btnAbout.Click += btnAbout_Click;
             // 
-            // label4
+            // chkKeyboardControls
             // 
-            label4.AutoSize = true;
-            label4.Location = new Point(13, 412);
-            label4.Name = "label4";
-            label4.Size = new Size(378, 15);
-            label4.TabIndex = 12;
-            label4.Text = "Please avoid the following characters for renaming: <  >  :  \"  /   \\  |  ?  *";
+            chkKeyboardControls.AutoSize = true;
+            chkKeyboardControls.BackColor = SystemColors.Control;
+            chkKeyboardControls.Checked = true;
+            chkKeyboardControls.CheckState = CheckState.Checked;
+            chkKeyboardControls.FlatStyle = FlatStyle.Flat;
+            chkKeyboardControls.Location = new Point(233, 36);
+            chkKeyboardControls.Name = "chkKeyboardControls";
+            chkKeyboardControls.Size = new Size(121, 19);
+            chkKeyboardControls.TabIndex = 13;
+            chkKeyboardControls.Text = "Keyboard Controls";
+            chkKeyboardControls.TextAlign = ContentAlignment.MiddleCenter;
+            chkKeyboardControls.UseVisualStyleBackColor = false;
+            chkKeyboardControls.CheckedChanged += chkKeyboardControls_CheckedChanged;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(508, 435);
-            Controls.Add(label4);
+            BackColor = SystemColors.Control;
+            ClientSize = new Size(508, 417);
+            Controls.Add(chkKeyboardControls);
             Controls.Add(btnAbout);
             Controls.Add(btnExit);
             Controls.Add(label3);
@@ -211,6 +222,6 @@
         private Label label3;
         private Button btnExit;
         private Button btnAbout;
-        private Label label4;
+        private CheckBox chkKeyboardControls;
     }
 }
